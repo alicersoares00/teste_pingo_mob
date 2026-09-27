@@ -9,7 +9,7 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
-// Local text-based icons avoid requiring the missing @expo/vector-icons package.
+
 type IconProps = { name: string; size: number; color: string };
 
 const ScreenIcon = ({ name, size, color }: IconProps) => {
@@ -53,8 +53,9 @@ export default function ControlScreen({ navigation }: any) {
 
         <View style={styles.headerRight}>
           <TouchableOpacity
+            onPress={() => navigation?.navigate('History')}
             accessibilityRole="button"
-            accessibilityLabel="Notificações"
+            accessibilityLabel="Histórico"
             style={styles.headerIcon}
             activeOpacity={0.7}
           >
@@ -145,6 +146,7 @@ export default function ControlScreen({ navigation }: any) {
         {/* Botão para Customizar Novo Ciclo */}
         <TouchableOpacity
           style={styles.dashedButton}
+          onPress={() => navigation?.navigate('CustomCycle')}
           activeOpacity={0.7}
           accessibilityRole="button"
           accessibilityLabel="Customizar novo ciclo"
@@ -152,7 +154,7 @@ export default function ControlScreen({ navigation }: any) {
           <View style={styles.dashedIconBox}>
             <Feather name="plus" size={20} color="#0284C7" />
           </View>
-          <Text style={styles.dashedButtonText}>Customizar novo</Text>
+          <Text style={styles.dashedButtonText}>Novo Ciclo</Text>
         </TouchableOpacity>
       </ScrollView>
 
@@ -160,10 +162,19 @@ export default function ControlScreen({ navigation }: any) {
       <View style={styles.bottomNav}>
         <TouchableOpacity
           style={styles.activeTab}
+          onPress={() => navigation?.navigate('Home')}
           accessibilityRole="button"
           accessibilityLabel="Ecrã inicial"
         >
           <Ionicons name="home" size={22} color="#0284C7" />
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => navigation?.navigate('History')}
+          accessibilityRole="button"
+          accessibilityLabel="Histórico"
+        >
+          <Feather name="bell" size={22} color="#64748B" />
         </TouchableOpacity>
 
         <TouchableOpacity
