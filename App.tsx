@@ -5,6 +5,8 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import LoginScreen from './src/screens/LoginScreen';
 import ControlScreen from './src/screens/ControlScreen';
 import SettingsScreen from './src/screens/SettingsScreen';
+import CustomCycleScreen from './src/screens/CustomCycleScreen';
+import HistoryScreen from './src/screens/HistoryScreen';
 
 const Stack = createNativeStackNavigator();
 
@@ -17,6 +19,7 @@ export default function App() {
           headerStyle: { backgroundColor: '#F8FAFC' },
           headerTintColor: '#0F172A',
           headerTitleStyle: { fontWeight: '700' },
+          headerTitleAlign: 'center',
           contentStyle: { backgroundColor: '#F8FAFC' },
         }}
       >
@@ -35,6 +38,19 @@ export default function App() {
           component={SettingsScreen} 
           options={{ title: 'Configurações' }} 
         />
+
+        <Stack.Screen 
+          name="CustomCycle" 
+          component={CustomCycleScreen} 
+          options={{ title: 'Novo Ciclo' }}
+        />
+
+        <Stack.Screen 
+          name="History" 
+          component={HistoryScreen} 
+          options={{ title: 'Histórico de Ciclos' }}
+        />
+
       </Stack.Navigator>
     </NavigationContainer>
   );
