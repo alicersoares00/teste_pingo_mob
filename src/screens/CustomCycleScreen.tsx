@@ -8,20 +8,39 @@ import {
   Alert,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export default function CustomCycleScreen({ navigation }: any) {
   const [cycleName, setCycleName] = useState('');
   const [description, setDescription] = useState('');
   const [duration, setDuration] = useState('');
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!cycleName || !duration) {
       Alert.alert('Atenção', 'Por favor, preencha o nome e a duração do ciclo.');
       return;
     }
 
-    Alert.alert('Sucesso', 'Novo ciclo criado com sucesso!');
-    navigation.goBack();
+    try {
+      const newCycle = {
+        id: Date.now().toString(),
+        name: cycleName,
+        description: description,
+        duration: `${duration} min`,
+      };
+
+      const existingCyclesJson = await AsyncStorage.getItem('@pingo_custom_cycles');
+      const existingCycles = existingCyclesJson ? JSON.parse(existingCyclesJson) : [];
+
+      const updatedCycles = [...existingCycles, newCycle];
+
+      await AsyncStorage.setItem('@pingo_custom_cycles', JSON.stringify(updatedCycles));
+
+      Alert.alert('Sucesso', 'Novo ciclo criado com sucesso!');
+      navigation.goBack();
+    } catch (error) {
+      Alert.alert('Erro', 'Não foi possível salvar o ciclo.');
+    }
   };
 
   return (

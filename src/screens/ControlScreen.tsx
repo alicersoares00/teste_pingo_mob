@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import {
   StyleSheet,
   Text,
@@ -9,8 +9,17 @@ import {
   SafeAreaView,
   StatusBar,
 } from 'react-native';
+import { useFocusEffect } from '@react-navigation/native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 type IconProps = { name: string; size: number; color: string };
+
+type CustomCycle = {
+  id: string;
+  name: string;
+  description?: string;
+  duration: string;
+};
 
 const ScreenIcon = ({ name, size, color }: IconProps) => {
   const glyphs: Record<string, string> = {
@@ -35,17 +44,61 @@ export default function ControlScreen({ navigation }: any) {
   const [quickCycle, setQuickCycle] = useState(true);
   const [extraCycle, setExtraCycle] = useState(false);
 
+  const [customCycles, setCustomCycles] = useState<CustomCycle[]>([]);
+  const [customSwitches, setCustomSwitches] = useState<Record<string, boolean>>({});
+
+  // Função para carregar os ciclos do AsyncStorage
+  const loadCycles = async () => {
+    try {
+      const savedCycles = await AsyncStorage.getItem('@pingo_custom_cycles');
+      if (savedCycles) {
+        setCustomCycles(JSON.parse(savedCycles));
+      } else {
+        setCustomCycles([]);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar ciclos:', error);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      loadCycles();
+    }, [])
+  );
+
+  const toggleCustomSwitch = (id: string) => {
+    setCustomSwitches((prev) => ({
+      ...prev,
+      [id]: !prev[id],
+    }));
+  };
+
+  // Função direta de exclusão de ciclo
+  const handleDeleteCycle = async (idToDelete: string) => {
+    try {
+      // 1. Filtra a lista removendo o ciclo selecionado
+      const updatedList = customCycles.filter(
+        (cycle) => String(cycle.id) !== String(idToDelete)
+      );
+
+      // 2. Atualiza o estado da tela imediatamente
+      setCustomCycles(updatedList);
+
+      // 3. Atualiza o AsyncStorage
+      await AsyncStorage.setItem('@pingo_custom_cycles', JSON.stringify(updatedList));
+    } catch (error) {
+      console.error('Erro ao excluir ciclo:', error);
+    }
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
 
       {/* Barra Superior / Cabeçalho */}
       <View style={styles.header}>
-        <TouchableOpacity
-          accessibilityRole="button"
-          accessibilityLabel="Perfil do utilizador"
-          activeOpacity={0.7}
-        >
+        <TouchableOpacity activeOpacity={0.7}>
           <Ionicons name="person-circle-outline" size={32} color="#0F172A" />
         </TouchableOpacity>
 
@@ -54,8 +107,6 @@ export default function ControlScreen({ navigation }: any) {
         <View style={styles.headerRight}>
           <TouchableOpacity
             onPress={() => navigation?.navigate('History')}
-            accessibilityRole="button"
-            accessibilityLabel="Histórico"
             style={styles.headerIcon}
             activeOpacity={0.7}
           >
@@ -63,8 +114,6 @@ export default function ControlScreen({ navigation }: any) {
           </TouchableOpacity>
           <TouchableOpacity
             onPress={() => navigation?.navigate('Settings')}
-            accessibilityRole="button"
-            accessibilityLabel="Abrir configurações"
             activeOpacity={0.7}
           >
             <Ionicons name="settings-outline" size={22} color="#0F172A" />
@@ -84,8 +133,6 @@ export default function ControlScreen({ navigation }: any) {
           ]}
           onPress={() => setIsValveActive(!isValveActive)}
           activeOpacity={0.8}
-          accessibilityRole="button"
-          accessibilityLabel={`Válvula ${isValveActive ? 'ligada' : 'desligada'}. Toque para alternar o estado.`}
         >
           <View
             style={[
@@ -101,7 +148,7 @@ export default function ControlScreen({ navigation }: any) {
           </Text>
         </TouchableOpacity>
 
-        {/* Card: Ciclo Rápido */}
+        {/* Card: Ciclo Rápido (Padrão - Não exclui) */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <View style={styles.cardLeftGroup}>
@@ -115,14 +162,13 @@ export default function ControlScreen({ navigation }: any) {
               onValueChange={setQuickCycle}
               trackColor={{ false: '#CBD5E1', true: '#0284C7' }}
               thumbColor="#FFFFFF"
-              accessibilityLabel="Alternar captação do primeiro enxágue no ciclo rápido"
             />
           </View>
           <View style={styles.divider} />
           <Text style={styles.cycleDescription}>Capta 1º Enxágue</Text>
         </View>
 
-        {/* Card: Ciclo Extra */}
+        {/* Card: Ciclo Extra (Padrão - Não exclui) */}
         <View style={styles.card}>
           <View style={styles.cardHeader}>
             <View style={styles.cardLeftGroup}>
@@ -136,20 +182,54 @@ export default function ControlScreen({ navigation }: any) {
               onValueChange={setExtraCycle}
               trackColor={{ false: '#CBD5E1', true: '#0284C7' }}
               thumbColor="#FFFFFF"
-              accessibilityLabel="Alternar captação do segundo enxágue no ciclo extra"
             />
           </View>
           <View style={styles.divider} />
           <Text style={styles.cycleDescription}>Capta 2º Enxágue</Text>
         </View>
 
+        {/* Ciclos Criados pelo Usuário (Exclusão Habilitada) */}
+        {customCycles.map((cycle) => (
+          <View key={String(cycle.id)} style={styles.card}>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardLeftGroup}>
+                <View style={styles.iconContainer}>
+                  <MaterialCommunityIcons name="timer-outline" size={24} color="#0F172A" />
+                </View>
+                <Text style={styles.cycleTitle}>{cycle.name}</Text>
+              </View>
+
+              <View style={styles.cardRightGroup}>
+                <Switch
+                  value={!!customSwitches[String(cycle.id)]}
+                  onValueChange={() => toggleCustomSwitch(String(cycle.id))}
+                  trackColor={{ false: '#CBD5E1', true: '#0284C7' }}
+                  thumbColor="#FFFFFF"
+                />
+
+                {/* Botão Vermelho de Exclusão */}
+                <TouchableOpacity
+                  onPress={() => handleDeleteCycle(String(cycle.id))}
+                  style={styles.deleteButton}
+                  activeOpacity={0.6}
+                >
+                  <Text style={styles.deleteText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <View style={styles.divider} />
+            <Text style={styles.cycleDescription}>
+              {cycle.description ? `${cycle.description} • ` : ''}Duração: {cycle.duration}
+            </Text>
+          </View>
+        ))}
+
         {/* Botão para Customizar Novo Ciclo */}
         <TouchableOpacity
           style={styles.dashedButton}
           onPress={() => navigation?.navigate('CustomCycle')}
           activeOpacity={0.7}
-          accessibilityRole="button"
-          accessibilityLabel="Customizar novo ciclo"
         >
           <View style={styles.dashedIconBox}>
             <Feather name="plus" size={20} color="#0284C7" />
@@ -163,32 +243,19 @@ export default function ControlScreen({ navigation }: any) {
         <TouchableOpacity
           style={styles.activeTab}
           onPress={() => navigation?.navigate('Home')}
-          accessibilityRole="button"
-          accessibilityLabel="Ecrã inicial"
         >
           <Ionicons name="home" size={22} color="#0284C7" />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={() => navigation?.navigate('History')}
-          accessibilityRole="button"
-          accessibilityLabel="Histórico"
-        >
+        <TouchableOpacity onPress={() => navigation?.navigate('History')}>
           <Feather name="bell" size={22} color="#64748B" />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          onPress={() => navigation?.navigate('Settings')}
-          accessibilityRole="button"
-          accessibilityLabel="Configurações"
-        >
+        <TouchableOpacity onPress={() => navigation?.navigate('Settings')}>
           <Ionicons name="settings-outline" size={22} color="#64748B" />
         </TouchableOpacity>
 
-        <TouchableOpacity
-          accessibilityRole="button"
-          accessibilityLabel="Perfil"
-        >
+        <TouchableOpacity>
           <Ionicons name="person-circle-outline" size={26} color="#64748B" />
         </TouchableOpacity>
       </View>
@@ -228,7 +295,6 @@ const styles = StyleSheet.create({
     paddingTop: 20,
     paddingBottom: 24,
   },
-  /* Banner da Válvula */
   statusBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -260,7 +326,6 @@ const styles = StyleSheet.create({
   statusBold: {
     fontWeight: '800',
   },
-  /* Cards de Ciclo */
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
@@ -277,6 +342,25 @@ const styles = StyleSheet.create({
   cardLeftGroup: {
     flexDirection: 'row',
     alignItems: 'center',
+    flex: 1,
+  },
+  cardRightGroup: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  deleteButton: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: '#FEE2E2',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteText: {
+    color: '#EF4444',
+    fontSize: 14,
+    fontWeight: 'bold',
   },
   iconContainer: {
     width: 40,
@@ -302,7 +386,6 @@ const styles = StyleSheet.create({
     color: '#475569',
     fontWeight: '600',
   },
-  /* Botão Tracejado */
   dashedButton: {
     borderWidth: 1.5,
     borderStyle: 'dashed',
@@ -331,7 +414,6 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '700',
   },
-  /* Navegação Inferior */
   bottomNav: {
     backgroundColor: '#FFFFFF',
     flexDirection: 'row',
